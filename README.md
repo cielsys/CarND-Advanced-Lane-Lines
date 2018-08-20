@@ -2,6 +2,19 @@
 [![Udacity - Self-Driving Car NanoDegree](https://s3.amazonaws.com/udacity-sdc/github/shield-carnd.svg)](http://www.udacity.com/drive)
 
 
+<img src="examples/laneLines_thirdPass.jpg" width="480" alt="Combined Image" />
+
+
+#### NoteToReviewer See [writeup.md](./writeup.md)
+
+This repo is for personal coursework.<br/>
+It is a clone of [CarND-Advanced-Lane-Lines](https://github.com/udacity/CarND-Advanced-Lane-Lines)
+the first project for [Udacity Self Driving Car](https://www.udacity.com/course/self-driving-car-engineer-nanodegree--nd013)<br/>
++++++++++++++++++++++++
+
+Overview
+---
+
 In this project, your goal is to write a software pipeline to identify the lane boundaries in a video, but the main output or product we want you to create is a detailed writeup of the project.  Check out the [writeup template](https://github.com/udacity/CarND-Advanced-Lane-Lines/blob/master/writeup_template.md) for this project and use it as a starting point for creating your own writeup.  
 
 Creating a great writeup:

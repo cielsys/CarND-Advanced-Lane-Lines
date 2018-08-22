@@ -187,7 +187,7 @@ def CameraCal_UndistortList(dictCameraCalVals, imagesIn):
 # In[10]:
 
 
-def DistortionCalMain():
+def CameraCal_DoDistortionCal():
     numCornersXY = (9,6)
     calFileInNames = glob.glob('camera_cal/cal*.jpg')
     #calFileInNames = ['camera_cal/calibration2.jpg']
@@ -230,7 +230,7 @@ def DistortionCalMain():
 
         
 print("UNCOMMENT INVOCATION!!!")
-DistortionCalMain()
+CameraCal_DoDistortionCal()
 
 
 # ## Sample invocation  of Undistort for use in image proc pipeline
@@ -242,7 +242,7 @@ def SampleInvocationUndistort():
     imgFileName = 'camera_cal/calibration2.jpg'
     imgIn = mpimg.imread(imgFileName)
 
-    dictCameraCalVals = CameraCal_LoadCalFile(g_calFileName)
+    dictCameraCalVals = CameraCal_LoadCalFile(g_CameraDistortionCalValsFileName)
     imgUndistorted = CameraCal_Undistort(dictCameraCalVals, imgIn)
     
     get_ipython().run_line_magic('matplotlib', 'inline')
@@ -257,7 +257,7 @@ SampleInvocationUndistort()
 
 # ## Perspective Warp Calibration section
 
-# In[ ]:
+# In[12]:
 
 
 def GetPerspectiveWarpTrapezoids():
@@ -321,7 +321,7 @@ def DoPerspectiveTransform(imgIn, matTransform):
     return imgWarped
 
 
-# In[ ]:
+# In[13]:
 
 
 def CameraCal_SaveWarpFile(fileName, warpMatrix):
@@ -338,7 +338,7 @@ def CalcAndSaveWarpFile():
 CalcAndSaveWarpFile()
 
 
-# In[ ]:
+# In[14]:
 
 
 def SampleInvocationPerspectiveWarp():
@@ -348,7 +348,7 @@ def SampleInvocationPerspectiveWarp():
     imgInFileName = 'camera_caloutput/straight_lines2.warptrap.jpg'
     imgIn = mpimg.imread(imgInFileName)
     
-    dictCameraCalVals = CameraCal_LoadCalFile(g_calFileName)
+    dictCameraCalVals = CameraCal_LoadCalFile(g_CameraDistortionCalValsFileName)
     imgIn = CameraCal_Undistort(dictCameraCalVals, imgIn)
 
     useCalFile = False
@@ -377,10 +377,11 @@ SampleInvocationPerspectiveWarp()
 
 # ### Perspective warp tool
 # This is a dev/debug convenience utility to assist finding appropriate points for perspective warping.
-# It is an offline/off pipeline calibration step. Once srcTrapezoidXY_TLCCW[] has been determined this function is not used.
-# It also saves the trapzoid overlay for reference in the writeup
+# It is an offline/off pipeline calibration step. Once srcTrap has been determined this function is not used.
+# It also saves the trapzoid overlay for reference in the writeup.
+# Modification of the actual values is done in GetPerspectiveWarpTrapezoids()
 
-# In[ ]:
+# In[15]:
 
 
 def EmpiricalWarpTrapazoidTool():

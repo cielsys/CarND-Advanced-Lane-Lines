@@ -3,7 +3,8 @@
 
 # Camera Calibration with OpenCV
 # ===
-# Run All Cells should work. The final Main cell invokes the calibration and runs undistort on the cal input files and displays and saves them to file.
+# Performs camera distortion calibration and perspective warp transform calculations.
+# Run All Cells should work.  The  Main distortion cell invokes the calibration and runs undistort on the cal input files and displays and saves them to file.
 # 
 
 # In[1]:
@@ -27,9 +28,12 @@ get_ipython().run_cell_magic('HTML', '', '<style> code {background-color : orang
 # In[3]:
 
 
-# For debug only. These are default to false at start of module, but overriden in the final Main testing cell
-g_doDrawCorners = False # This is used in cal calculation: Overlays the calImage with the found corners
-g_doCreateBothImage = False # Creates composite of input and output images in CameraCal_Undistort()
+# For debug only. These are default to false at start of module
+g_doDrawCorners=True # This is used in cal calculation: Overlays the calImage with the found corners
+g_doCreateBothImage = True # Creates composite of input and output images in CameraCal_Undistort()
+
+g_CameraDistortionCalValsFileName = "CameraDistortionCalVals.pypickle"
+g_CameraPerspectiveWarpMatrixFileName = "CameraPerspectiveWarpMatrix.pypickle"
 
 
 # In[4]:
@@ -62,7 +66,6 @@ def DrawText(img, text, posLL = (10,40)):
 # In[6]:
 
 
-get_ipython().run_line_magic('matplotlib', 'qt4')
 def AnimateImages(imgList, pauseMs=1000):
     for index, imgIn in enumerate(imgList):
         windowName = "img" # 'img'+str(index), imgIn) # Use same window name to reuse same window. Different names for different windows
@@ -176,7 +179,7 @@ def CameraCal_UndistortList(dictCameraCalVals, imagesIn):
     return(imagesBothOut, imagesOut)
 
 
-# ## Main routine
+# ## Main routine for distortion calibration
 # ### Creates a camera distortion cal object from a list of checkerboard cal files and saves the cal object to disk
 # Or optionally loads the cal object from disk.
 # Then applies the cal object to test images and displays (and optionally saves) the resulting images
@@ -184,57 +187,58 @@ def CameraCal_UndistortList(dictCameraCalVals, imagesIn):
 # In[10]:
 
 
-# For debug only. These are default to false at start of module
-g_doDrawCorners=True # This is used in cal calculation: Overlays the calImage with the found corners
-g_doCreateBothImage = True # Creates composite of input and output images in CameraCal_Undistort()
+def DistortionCalMain():
+    numCornersXY = (9,6)
+    calFileInNames = glob.glob('camera_cal/cal*.jpg')
+    #calFileInNames = ['camera_cal/calibration2.jpg']
+    outputDir = "camera_caloutput/"
 
-g_outputDir = "camera_caloutput/"
-g_calFileName = g_outputDir + "cameracalval.pypickle"
-if (not os.path.exists(g_outputDir)):
-    os.makedirs(g_outputDir)
-    
-g_numCornersXY = (9,6)
+    # Get natural sort of files... only works for this exact environment and is useful only for dev debug
+    doSort=True
+    if (doSort):
+        baseLen = len("camera_cal/calibration")
+        calFileInNames = sorted(calFileInNames, key=lambda fileName: int(fileName[baseLen:-4]))
+    else:
+        calFileInNames
 
-g_calFileInNames = glob.glob('camera_cal/cal*.jpg')
-#g_calFileInNames = ['camera_cal/calibration2.jpg']
+    #print("Infiles: ", calFileInNames)
+    calImages = OpenImages(calFileInNames)
 
-# Get natural sort of files... only works for this exact environment and is useful only for dev debug
-g_doSort=True
-if (g_doSort):
-    g_baseLen = len("camera_cal/calibration")
-    g_calFileInNames = sorted(g_calFileInNames, key=lambda fileName: int(fileName[g_baseLen:-4]))
-    
-#print("Infiles: ", g_calFileInNames)
-g_calImages = OpenImages(g_calFileInNames)
+    if (not os.path.exists(outputDir)):
+        os.makedirs(g_outputDir)
+        
+    useCalFile = False
+    if (useCalFile):
+        dictCameraCalVals = CameraCal_LoadCalFile(g_CameraDistortionCalValsFileName)
+    else:
+        dictCameraCalVals = CameraCal_CalcCalValsFromImages(calImages, numCornersXY)
+        CameraCal_SaveCalFile(g_CameraDistortionCalValsFileName, dictCameraCalVals)
+        #AnimateImages(g_calImages, 2000)
 
-g_useCalFile = False
-if (g_useCalFile):
-    g_dictCameraCalVals = CameraCal_LoadCalFile(g_calFileName)
-else:
-    g_dictCameraCalVals = CameraCal_CalcCalValsFromImages(g_calImages, g_numCornersXY)
-    CameraCal_SaveCalFile(g_calFileName, g_dictCameraCalVals)
-    #AnimateImages(g_calImages, 2000)
+    # Run undistort test on the same images used for calibration
+    testImagesIn = calImages
+    testImagesBothOut, testImagesOut = CameraCal_UndistortList(dictCameraCalVals, testImagesIn)  
 
-# Run undistort test on the same images used for calibration
-g_testImagesIn = g_calImages
-g_testImagesBothOut, g_testImagesOut = CameraCal_UndistortList(g_dictCameraCalVals, g_testImagesIn)  
+    # Animate the combined test output to see side by side comparison
+    AnimateImages(testImagesBothOut, 500)
 
-# Animate the combined test output to see side by side comparison
-AnimateImages(g_testImagesBothOut, 500)
+    saveOutFiles = True
+    if (saveOutFiles):
+        outputFileNames = [(outputDir + os.path.splitext(os.path.basename(fileName))[0] + ".out.jpg") for fileName in calFileInNames]
+        #print("Outfiles: ", g_outputFileNames)
+        SaveImages(outputFileNames, testImagesBothOut)
 
-g_saveOutFiles = True
-if (g_saveOutFiles):
-    g_outputFileNames = [(g_outputDir + os.path.splitext(os.path.basename(fileName))[0] + ".out.jpg") for fileName in g_calFileInNames]
-    #print("Outfiles: ", g_outputFileNames)
-    SaveImages(g_outputFileNames, g_testImagesBothOut)
+        
+print("UNCOMMENT INVOCATION!!!")
+DistortionCalMain()
 
 
-# ## Sample invocation for use in image proc pipeline
+# ## Sample invocation  of Undistort for use in image proc pipeline
 
 # In[11]:
 
 
-def SampleInvocation():
+def SampleInvocationUndistort():
     imgFileName = 'camera_cal/calibration2.jpg'
     imgIn = mpimg.imread(imgFileName)
 
@@ -248,5 +252,174 @@ def SampleInvocation():
     ax2.imshow(imgUndistorted)
     ax2.set_title('Undistorted Image', fontsize=30)
     
-SampleInvocation()
+SampleInvocationUndistort()
+
+
+# ## Perspective Warp Calibration section
+
+# In[ ]:
+
+
+def GetPerspectiveWarpTrapezoids():
+    """
+    Returns the src and dest trapezoids used by GetPerspectiveWarpTransform/cv2.getPerspectiveTransform
+    """
+    # Define the location of points of the trapezoid
+    # as seen in the POV image. These are determined empirically
+    # by manually selecting the pixel points in the calibration image
+    # in EmpiricalWarpTrapazoidTool()
+    
+    # 4 [X,Y] coords from the TopLeft CounterClockWise: LeftTop LeftBottom, RightBottom, RightTop
+    srcTrap = np.float32([
+                     [580, 460], # LT
+                     [213, 718], # LB
+                     [1103, 718],# RB
+                     [705, 460]])# RT
+ 
+    # Temp vals for readability    
+    (srcLT, srcLB, srcRB, srcRT)  = srcTrap
+
+    # Define the location to where each those points will map to
+    # in the destination image. Move the bottoms in, and the tops out, 
+    destL= (srcLT[0] + srcLB[0])/2 - 100
+    destR= (srcRT[0] + srcRB[0])/2 + 100
+    destT= 0
+    destB= 715
+
+    # Define the points of the destination image to which the src trapezoid point should map to
+    destRect = np.float32([
+                     [destL, destT],  # LT
+                     [destL, destB],  # LB
+                     [destR, destB],  # RB
+                     [destR, destT],])# RT
+
+    #print("Dest L={} R={} T={} B={}".format(destL, destR, destT, destB))
+    #print("dstRect",destRect)
+    return(srcTrap, destRect)
+
+
+def GetPerspectiveWarpTransform():
+    """ 
+    Calculation of perspective warp transform matrix
+    Retrieves the srcTrapezoid and destRectangles that have been empirically tuned
+    Returns a transform matrix to be called by cv2.warpPerspective
+    """
+    (srcTrap, destRect) = GetPerspectiveWarpTrapezoids()
+    matrix = cv2.getPerspectiveTransform(srcTrap, destRect)
+    return matrix
+
+#INTER_NEAREST - a nearest-neighbor interpolation
+#INTER_LINEAR - a bilinear interpolation (used by default)
+#INTER_AREA - resampling using pixel area relation. It may be a preferred method for image decimation, as it gives moire’-free results. But when the image is zoomed, it is similar to the INTER_NEAREST method.
+#INTER_CUBIC - a bicubic interpolation over 4x4 pixel neighborhood
+#INTER_LANCZOS4 - a Lanczos interpolation over 8x8 pixel neighborhood
+
+def DoPerspectiveTransform(imgIn, matTransform):
+    img_size = (imgIn.shape[1], imgIn.shape[0])
+    interpolation = cv2.INTER_CUBIC
+    imgWarped = cv2.warpPerspective(imgIn, matTransform, img_size, flags=interpolation)
+    return imgWarped
+
+
+# In[ ]:
+
+
+def CameraCal_SaveWarpFile(fileName, warpMatrix):
+    pickle.dump(warpMatrix, open(fileName, "wb" ) )
+
+def CameraCal_LoadWarpFile(fileName):
+    warpMatrix = pickle.load( open(fileName, "rb" ) )
+    return(warpMatrix)
+
+def CalcAndSaveWarpFile():
+    matPerspectiveWarp = GetPerspectiveWarpTransform()
+    CameraCal_SaveWarpFile(g_CameraPerspectiveWarpMatrixFileName, matPerspectiveWarp)
+    
+CalcAndSaveWarpFile()
+
+
+# In[ ]:
+
+
+def SampleInvocationPerspectiveWarp():
+    imgInFileName = 'test_images/straight_lines2.jpg'
+    #imgInFileName = 'test_images/straight_lines2.jpg'
+    imgInFileName = 'camera_caloutput/straight_lines1.warptrap.jpg'
+    imgInFileName = 'camera_caloutput/straight_lines2.warptrap.jpg'
+    imgIn = mpimg.imread(imgInFileName)
+    
+    dictCameraCalVals = CameraCal_LoadCalFile(g_calFileName)
+    imgIn = CameraCal_Undistort(dictCameraCalVals, imgIn)
+
+    useCalFile = False
+    if (useCalFile):
+        matPerspectiveWarp = CameraCal_LoadWarpFile(g_CameraPerspectiveWarpMatrixFileName)
+    else:
+        matPerspectiveWarp = GetPerspectiveWarpTransform()
+        
+    imgWarped = DoPerspectiveTransform(imgIn, matPerspectiveWarp)
+    
+    #%matplotlib qt4
+    get_ipython().run_line_magic('matplotlib', 'inline')
+    f, (ax1, ax2) = plt.subplots(1, 2, figsize=(20,10))
+    ax1.imshow(imgIn)
+    ax1.set_title('imgIn', fontsize=30)
+    ax2.imshow(imgWarped)
+    ax2.set_title('imgWarped', fontsize=30)
+    plt.tight_layout()
+    
+    imgOutFileName = 'camera_caloutput/straight_lines1.warped.jpg'
+    #mpimg.imsave(imgOutFileName, imgWarped, format='jpg')
+
+print("UNCOMMENT INVOCATION!!!")
+SampleInvocationPerspectiveWarp()
+
+
+# ### Perspective warp tool
+# This is a dev/debug convenience utility to assist finding appropriate points for perspective warping.
+# It is an offline/off pipeline calibration step. Once srcTrapezoidXY_TLCCW[] has been determined this function is not used.
+# It also saves the trapzoid overlay for reference in the writeup
+
+# In[ ]:
+
+
+def EmpiricalWarpTrapazoidTool():
+    imgIn1FileName = 'test_images/straight_lines1.jpg'
+    imgIn1 = mpimg.imread(imgIn1FileName)
+    imgIn2FileName = 'test_images/straight_lines2.jpg'
+    imgIn2 = mpimg.imread(imgIn2FileName)
+
+    # Do distortion correction. Only makes a couple pixels difference in near field
+    dictCameraCalVals = CameraCal_LoadCalFile(g_calFileName)
+    imgIn1 = CameraCal_Undistort(dictCameraCalVals, imgIn1)
+    imgIn2 = CameraCal_Undistort(dictCameraCalVals, imgIn2)
+
+    (srcTrap, destRect) = GetPerspectiveWarpTrapezoids()
+ 
+    # Convert points that are acceptable to cv2.polylines()
+    trapInts = srcTrap.astype(int)
+    cvPolyPts = trapInts.reshape((-1,1,2)) # I don't understand this, but it's needed. Thank you internet!
+    
+    lineThickness = 1
+    color = (255,0,0)
+    imgOut1 = cv2.polylines(imgIn1, [cvPolyPts], True, color, lineThickness)            
+    imgOut2 = cv2.polylines(imgIn2, [cvPolyPts], True, color, lineThickness) 
+    
+    get_ipython().run_line_magic('matplotlib', 'qt4')
+    #%matplotlib inline
+    f, (ax1, ax2) = plt.subplots(1, 2, figsize=(20,10))
+    ax1.imshow(imgOut1)
+    ax1.set_title(imgIn1FileName, fontsize=20)
+    ax2.imshow(imgOut2)
+    ax2.set_title(imgIn2FileName, fontsize=20)
+    plt.tight_layout()
+    
+    imgOut1FileName = 'camera_caloutput/straight_lines1.warptrap.jpg'
+    imgOut2FileName = 'camera_caloutput/straight_lines2.warptrap.jpg'
+    mpimg.imsave(imgOut1FileName, imgOut1, format='jpg')
+    mpimg.imsave(imgOut2FileName, imgOut2, format='jpg')
+
+print("UNCOMMENT INVOCATION!!!")
+#=====> Uncomment next line to run the tool
+#EmpiricalWarpTrapazoidTool()
 

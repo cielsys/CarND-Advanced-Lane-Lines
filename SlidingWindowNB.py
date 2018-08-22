@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import numpy as np
@@ -10,13 +10,13 @@ import matplotlib.pyplot as plt
 import cv2
 
 
-# In[4]:
+# In[2]:
 
 
 get_ipython().run_cell_magic('HTML', '', '<style> code {background-color : orange !important;} </style>\nfrom IPython.core.display import display, HTML\ndisplay(HTML("<style>.container { width:100% !important; }</style>"))')
 
 
-# In[74]:
+# In[3]:
 
 
 # Load our image
@@ -64,7 +64,7 @@ def find_lane_pixels(binary_warped):
 
     # Step through the windows one by one
     for window in range(nwindows):
-        print("======================= processing window: ", window)
+        #print("======================= processing window: ", window)
         # Identify window boundaries in x and y (and right and left)
         win_y_low = binary_warped.shape[0] - (window+1)*window_height
         win_y_high = binary_warped.shape[0] - window*window_height
@@ -90,46 +90,38 @@ def find_lane_pixels(binary_warped):
         #good_left_inds = np.nonzero(leftWindow)
         #good_right_inds = np.nonzero(rightWindow)
         
+        # Identify the nonzero pixels in x and y within the window #
+        good_left_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) & (nonzerox >= win_xleft_low) &  (nonzerox < win_xleft_high)).nonzero()[0]
+        good_right_inds = ((nonzeroy >= win_y_low) & (nonzeroy < win_y_high) & (nonzerox >= win_xright_low) &  (nonzerox < win_xright_high)).nonzero()[0]
+        
         # Append these indices to the lists
         left_lane_inds.append(good_left_inds)
         right_lane_inds.append(good_right_inds)
         
-        #histogramLeft = np.sum(leftWindow, axis=0)
-        #histogramRight = np.sum(rightWindow, axis=0)
-        #left_peak = np.argmax(histogramLeft)
-        #right_peak = np.argmax(histogramRight)
-        #left_peak = np.argmax(histogramLeft)
-        #right_peak = np.argmax(histogramRight)
         nonzeroLeft = leftWindow.nonzero()
         nonzeroxLeft = nonzeroLeft[1]
         
         nonzeroRight = rightWindow.nonzero()
         nonzeroxRight = nonzeroRight[1]
         
-        #print("nonZeroLeft= ", nonzeroLeft)
-        #print("nonzeroxLeft= ", nonzeroxLeft)
-        #print("nonzeroRight= ", nonzeroRight)
-        #print("nonzeroxRight= ", nonzeroxRight)
-        
         if (len(nonzeroxLeft) > minpix):
-            leftGoodPixelAvgX = int(np.average(nonzeroxLeft))
+            leftGoodPixelAvgX = int(np.mean(nonzeroxLeft))
         else:
             leftGoodPixelAvgX = margin
             
         if (len(nonzeroxRight) > minpix):
-            rightGoodPixelAvgX = int(np.average(nonzeroxRight))
+            rightGoodPixelAvgX = int(np.mean(nonzeroxRight))
         else:
             rightGoodPixelAvgX = margin
                     
         #print("leftGoodPixelAvgX= ", leftGoodPixelAvgX)
         #print("rightGoodPixelAvgX= ", rightGoodPixelAvgX)
-       
-        
+              
         left_peak = leftGoodPixelAvgX + win_xleft_low
         right_peak = rightGoodPixelAvgX + win_xright_low
         #print("peaksLR= ({}, {})".format(left_peak, right_peak))
 
-        colorLine = (255, 0, 0)
+        colorLine = (255, 130, 0)
         Pt0 = (int(left_peak), win_y_low)
         Pt1 = (int(left_peak), win_y_high)
         cv2.line(out_img, Pt0, Pt1, colorLine, lineWidth)
@@ -140,7 +132,6 @@ def find_lane_pixels(binary_warped):
  
         leftx_current = left_peak
         rightx_current = right_peak
-        pass # Remove this when you add your function
 
     # Concatenate the arrays of indices (previously was a list of lists of pixels)
     try:
@@ -158,14 +149,17 @@ def find_lane_pixels(binary_warped):
 
     return leftx, lefty, rightx, righty, out_img
 
-get_ipython().run_line_magic('matplotlib', 'qt4')
-leftx, lefty, rightx, righty, out_img = find_lane_pixels(binary_warped)
-plt.figure(figsize=(12,8))
-plt.imshow(out_img)
-plt.tight_layout()
+#%matplotlib qt4
+#%matplotlib inline
+#%matplotlib notebook
+#leftx, lefty, rightx, righty, out_img = find_lane_pixels(binary_warped)
+#plt.figure(figsize=(12,8))
+#plt.imshow(out_img)
+#plt.tight_layout()
 
 
-# In[3]:
+# In[4]:
+
 
 
 def fit_polynomial(binary_warped):
@@ -173,8 +167,8 @@ def fit_polynomial(binary_warped):
     leftx, lefty, rightx, righty, out_img = find_lane_pixels(binary_warped)
 
     ### TO-DO: Fit a second order polynomial to each using `np.polyfit` ###
-    left_fit = None
-    right_fit = None
+    left_fit = np.polyfit(lefty, leftx, 2)
+    right_fit = np.polyfit(righty, rightx, 2)
 
     # Generate x and y values for plotting
     ploty = np.linspace(0, binary_warped.shape[0]-1, binary_warped.shape[0] )
@@ -200,6 +194,9 @@ def fit_polynomial(binary_warped):
 
 
 out_img = fit_polynomial(binary_warped)
+#%matplotlib qt4
+#%matplotlib notebook
+#%matplotlib inline
 
 plt.imshow(out_img)
 

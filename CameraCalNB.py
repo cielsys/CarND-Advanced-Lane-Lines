@@ -7,7 +7,7 @@
 # Run All Cells should work.  The  Main distortion cell invokes the calibration and runs undistort on the cal input files and displays and saves them to file.
 # 
 
-# In[1]:
+# In[2]:
 
 
 import matplotlib.pyplot as plt
@@ -19,13 +19,13 @@ import os
 import pickle
 
 
-# In[2]:
+# In[3]:
 
 
 get_ipython().run_cell_magic('HTML', '', '<style> code {background-color : orange !important;} </style>\nfrom IPython.core.display import display, HTML\ndisplay(HTML("<style>.container { width:100% !important; }</style>"))')
 
 
-# In[3]:
+# In[4]:
 
 
 # For debug only. These are default to false at start of module
@@ -36,7 +36,7 @@ g_CameraDistortionCalValsFileName = "CameraDistortionCalVals.pypickle"
 g_CameraPerspectiveWarpMatrixFileName = "CameraPerspectiveWarpMatrix.pypickle"
 
 
-# In[4]:
+# In[5]:
 
 
 def OpenImages(imgFileNames):
@@ -51,7 +51,7 @@ def SaveImages(imgFileNames, images):
         mpimg.imsave(imgFileName, img, format='jpg')
 
 
-# In[5]:
+# In[6]:
 
 
 def DrawText(img, text, posLL = (10,40)):
@@ -63,7 +63,7 @@ def DrawText(img, text, posLL = (10,40)):
  
 
 
-# In[6]:
+# In[7]:
 
 
 def AnimateImages(imgList, pauseMs=1000):
@@ -75,7 +75,7 @@ def AnimateImages(imgList, pauseMs=1000):
     cv2.destroyAllWindows()
 
 
-# In[7]:
+# In[8]:
 
 
 def CameraCal_FindCorners(calImages, numCornersXY):
@@ -119,7 +119,7 @@ def CameraCal_FindCorners(calImages, numCornersXY):
     return(cornersFoundStatus, trueCornerPoints, foundCornerPoints)
 
 
-# In[8]:
+# In[9]:
 
 
 def CameraCal_CalcCalValsFromPoints(trueCornerPoints, foundCornerPoints, imgSample):
@@ -154,7 +154,7 @@ def CameraCal_LoadCalFile(calFileName):
     
 
 
-# In[9]:
+# In[10]:
 
 
 def CameraCal_Undistort(dictCameraCalVals, imgIn):
@@ -338,7 +338,7 @@ def CalcAndSaveWarpFile():
 CalcAndSaveWarpFile()
 
 
-# In[14]:
+# In[15]:
 
 
 def SampleInvocationPerspectiveWarp():
@@ -359,8 +359,8 @@ def SampleInvocationPerspectiveWarp():
         
     imgWarped = DoPerspectiveTransform(imgIn, matPerspectiveWarp)
     
-    #%matplotlib qt4
-    get_ipython().run_line_magic('matplotlib', 'inline')
+    get_ipython().run_line_magic('matplotlib', 'qt4')
+    #%matplotlib inline
     f, (ax1, ax2) = plt.subplots(1, 2, figsize=(20,10))
     ax1.imshow(imgIn)
     ax1.set_title('imgIn', fontsize=30)

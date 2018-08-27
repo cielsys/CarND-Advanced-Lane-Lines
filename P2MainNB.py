@@ -125,61 +125,6 @@ def PlotImageRecords(imgRecords):
     
 
 
-# In[ ]:
-
-
-import pprint
-pp = pprint.PrettyPrinter(indent=4)
-np.set_printoptions(threshold=1000)   
-np.set_printoptions(threshold=np.nan)
-g_testpolyCoeff = None
-g_testimgPlotIn = None
-g_inPixelsX = None
-g_inPixelsY = None
-
-
-# In[53]:
-
-
-#np.set_printoptions(threshold=np.nan)
-
-def PlotSelectedAndPolynomial(polyCoeff, inPixelsX, inPixelsY, imgInBW):
-    global g_testpolyCoeff 
-    global g_testimgPlotIn
-    global g_inPixelsX 
-    global g_inPixelsY 
-
-    #g_testpolyCoeff = polyCoeff
-    #g_testimgPlotIn = imgInBW
-    #g_inPixelsX = inPixelsX
-    #g_inPixelsY = inPixelsY
-    
-    imageHeight = imgInBW.shape[0]
-    imageWidth = imgInBW.shape[1]
-
-    imgInGrey = imgInBW * 64
-    imgOut = np.dstack((imgInGrey, imgInGrey, imgInGrey))
-    
-    imgOut[inPixelsY, inPixelsX] = [0, 255, 0]
-    
-    coA, coB, coC = polyCoeff[0], polyCoeff[1], polyCoeff[2]
-
-    polyInY = np.array([y for y in range(imageHeight) if y % 8 == 0])
-    polyOutXf = coA * polyInY**2 + coB * polyInY + coC  
-    polyOutX = polyOutXf.astype(int)
-
-    points = np.array(list(zip(polyOutX, polyInY)))
-    isClosed=False
-    cv2.polylines(imgOut, [points], isClosed, (255, 0, 0), thickness=4)
-
-    return imgOut
-
-#g_imgPlotOut = PlotSelectedAndPolynomial(g_testpolyCoeff, g_inPixelsX, g_inPixelsY, g_testimgPlotIn)
-#%matplotlib qt4
-#plt.imshow(g_imgPlotOut)
-#plt.imshow(g_testimgPlotIn, cmap="gray")
-
-
 # In[8]:
 
 
@@ -202,7 +147,7 @@ def testPolyLine():
 
 # ### Camera Calibration Utilities and Processing
 
-# In[9]:
+# In[113]:
 
 
 def CmaeraCal_GetCalVals(cameraDistortionCalValsFileName, cameraPerspectiveWarpMatrixFileName):
@@ -225,14 +170,16 @@ def CameraCal_Undistort(imgIn, dictCameraCalVals):
     imgOut = cv2.undistort(imgIn, dictCameraCalVals["mtx"], dictCameraCalVals["dist"], None, dictCameraCalVals["mtx"])
     return(imgOut)
 
-def CameraCal_DoPerspectiveTransform(imgIn, matTransform):
+def CameraCal_DoPerspectiveTransform(imgIn, matTransform, doInverse = False):
     img_size = (imgIn.shape[1], imgIn.shape[0])
-    interpolation = cv2.INTER_CUBIC
-    imgOut = cv2.warpPerspective(imgIn, matTransform, img_size, flags=interpolation)
+    flags = cv2.INTER_CUBIC
+    if doInverse:
+        flags |= cv2.WARP_INVERSE_MAP    
+    imgOut = cv2.warpPerspective(imgIn, matTransform, img_size, flags=flags)
     return imgOut
 
 
-# In[10]:
+# In[122]:
 
 
 # See http://www.intmath.com/applications-differentiation/8-radius-curvature.php
@@ -246,7 +193,7 @@ def CalcRadiusOfCurvatureParabola(funcCoeffients, evalAtpixY, metersPerPixX=1, m
 
    radiusNumerator = pow((1 + (2 * coA * mY + coB)**2), 3/2)
    radiusDenominator = abs(2*coA)
-   radius = radiusNumerator/radiusDenominator                           
+   radius = round(radiusNumerator/radiusDenominator, 1)                           
    return(radius)
 
 
@@ -360,7 +307,7 @@ g_imgTest = mpimg.imread(g_testImgFileName)
 #Test_SelectPixelsUsingSlidingWindow()
 
 
-# In[12]:
+# In[106]:
 
 
 #g_testPolyCoeffLeft = np.array([ 2.13935315e-04, -3.77507980e-01,  4.76902175e+02])
@@ -401,7 +348,6 @@ class CImageLine(object):
 
     def CalcPolyFit(self, imgIn):
         imageHeight = imgIn.shape[0]
-        #selectedCoordsY = np.linspace(0, imageHeight-1, num=imageHeight)
 
         if (self.HasPolyFit() == True):
             selectedPixelsX, selectedPixelsY, imgSelection = self.SelectPixelsUsingPolynomial(self.polyCoeff, imgIn)
@@ -413,8 +359,7 @@ class CImageLine(object):
         polyCoeffNew = np.polyfit(selectedPixelsY, selectedPixelsX, 2)       
         self.polyCoeff = polyCoeffNew
 
-        imgPlot = imgIn.copy()
-        imgSelection = PlotSelectedAndPolynomial(polyCoeffNew, selectedPixelsX, selectedPixelsY, imgPlot)
+        imgSelection = PlotSelectedAndPolynomial(polyCoeffNew, selectedPixelsX, selectedPixelsY, imgIn)
 
         return polyCoeffNew, imgSelection
     
@@ -434,7 +379,7 @@ def ImageProc_HSLThreshold(imgHLSIn, channelNum, threshMinMax=(0, 255)):
 
 # ### Image Preprocessing Pipeline
 
-# In[14]:
+# In[110]:
 
 
 def ImageProc_PreProcPipeline(imgRaw, dictCameraCalVals):
@@ -443,10 +388,10 @@ def ImageProc_PreProcPipeline(imgRaw, dictCameraCalVals):
     imgUndistort = CameraCal_Undistort(imgRaw, dictCameraCalVals)
     imageRecsPreProc.append( (imgUndistort, "imgUndistort") ) 
     
-    imgPerspect = CameraCal_DoPerspectiveTransform(imgUndistort, dictCameraCalVals["warpMatrix"])
-    imageRecsPreProc.append( (imgPerspect, "imgPerspect") ) 
+    imgDePerspect = CameraCal_DoPerspectiveTransform(imgUndistort, dictCameraCalVals["warpMatrix"])
+    imageRecsPreProc.append( (imgDePerspect, "imgDePerspect") ) 
     
-    imgHSL =  cv2.cvtColor(imgPerspect, cv2.COLOR_RGB2HLS)
+    imgHSL =  cv2.cvtColor(imgDePerspect, cv2.COLOR_RGB2HLS)
     #imgHSL_Hue, imgHSL_HueThr = HSLThreshold(imgHSL, 0, (20, 25))
     #imgHSL_Lit, imgHSL_LitThr = HSLThreshold(imgHSL, 1, (90, 100))
     imgHSL_Sat, imgHSL_SatThr = ImageProc_HSLThreshold(imgHSL, 2, (90, 255))
@@ -463,7 +408,7 @@ def ImageProc_PreProcPipeline(imgRaw, dictCameraCalVals):
     return imageRecsPreProc
 
 
-# In[55]:
+# In[131]:
 
 
 #calFileInNames = glob.glob('camera_cal/cal*.jpg')
@@ -483,7 +428,71 @@ def GetImageIteratorFromDir():
     return(imageIter)
 
 
-# In[56]:
+# In[99]:
+
+
+
+def PlotSelectedAndPolynomial(polyCoeff, inPixelsX, inPixelsY, imgInBW):    
+    imageHeight = imgInBW.shape[0]
+    imageWidth = imgInBW.shape[1]
+
+    # Set unselected pixels to grey
+    imgInGrey = imgInBW * 64
+    imgOut = np.dstack((imgInGrey, imgInGrey, imgInGrey))
+    
+    # Display the selected pixels
+    imgOut[inPixelsY, inPixelsX, 1] = 255 # Set selected pixels to red
+    
+    lineSegmentPoints = EvalPolyToLineSegments(polyCoeff, imageHeight, doReverseSegments=False)
+    OverlayLineSegments(imgOut, lineSegmentPoints, isClosed=False)
+    return imgOut
+
+#g_imgPlotOut = PlotSelectedAndPolynomial(g_testpolyCoeff, g_inPixelsX, g_inPixelsY, g_testimgPlotIn)
+get_ipython().run_line_magic('matplotlib', 'qt4')
+plt.imshow(g_imgPlotOut)
+#plt.imshow(g_testimgPlotIn, cmap="gray")
+
+
+# In[116]:
+
+
+def EvalPolyToLineSegments(polyCoeff, imageHeight, doReverseSegments=False):
+    coA, coB, coC = polyCoeff[0], polyCoeff[1], polyCoeff[2]
+    
+    if doReverseSegments:
+        yStart, yStop, yStep = imageHeight, 4, -8
+    else:
+        yStart, yStop, yStep = 4, imageHeight, 8
+    
+    polyInY = np.array([y for y in range(yStart, yStop, yStep) ]) # Start at 4 so top line segments are sure to render
+    polyOutXf = coA * polyInY**2 + coB * polyInY + coC  
+    polyOutX = polyOutXf.astype(int)
+
+    lineSegmentPoints = np.array(list(zip(polyOutX, polyInY)))
+
+    return lineSegmentPoints
+
+def OverlayLineSegments(imgIn, lineSegmentPoints, isClosed=False, colorLine=(255, 0, 0)): 
+    cv2.polylines(imgIn, [lineSegmentPoints], isClosed, colorLine, thickness=4)
+
+def OverlayLineSegmentsFill(imgIn, lineSegmentPoints, isClosed=False, colorLine=(255, 0, 0), colorFill=(0, 128, 0)): 
+    cv2.fillConvexPoly(imgIn, lineSegmentPoints, colorFill)
+    cv2.polylines(imgIn, [lineSegmentPoints], isClosed, colorLine, thickness=5)
+
+
+# In[127]:
+
+
+def DrawText(img, text, posLL = (10,40), colorFont=(255, 255, 255), fontScale = 2):
+    font                   = cv2.FONT_HERSHEY_PLAIN    
+    lineType               = 2
+    cv2.putText(img, text, posLL, font, fontScale, colorFont, lineType)
+
+
+# # ==================== P2Main() ===================
+# ### This is the main cell/entry point for this notebook
+
+# In[132]:
 
 
 
@@ -494,6 +503,9 @@ def P2Main(rawImgSrcIter, dictCameraCalVals):
     
     # For every raw POV image coming from the camera
     for (imgRawPOV, imgRawPOVName) in rawImgSrcIter:
+        imageHeight = imgRawPOV.shape[0]
+        imageWidth = imgRawPOV.shape[1]
+
         curveRadiusMetersList = []
         imageRecsCurFrame = [] # A list image records generated at every step of processing
         imageRecsCurFrame.append( (imgRawPOV, imgRawPOVName) ) 
@@ -510,6 +522,8 @@ def P2Main(rawImgSrcIter, dictCameraCalVals):
         
         # Get the most recent image from the image preprocess image records to use for lane finding
         imgLineFindSrc = imageRecsPreProc[-1][0]
+        # Get the first image from the image preprocess image records to use imgFinal overlay
+        imgLineUndistort = imageRecsPreProc[0][0]
 
         # For each of the expected lane lines
         for curImageLine in imageLines:
@@ -524,10 +538,10 @@ def P2Main(rawImgSrcIter, dictCameraCalVals):
             imgHeight = imgRawPOV.shape[0]
             evalRadiusAtpixY = imgHeight - 20
             curveRadiusMetersCur = CalcRadiusOfCurvatureParabola(polyCoeffNew, evalRadiusAtpixY, dictCameraCalVals["metersPerPixX"], dictCameraCalVals["metersPerPixY"])
-            print("    P2Main->Radius_{} = {:0.0f}m".format(curImageLine.name, curveRadiusMetersCur))
+            print("    P2Main->Radius_{} = {}m".format(curImageLine.name, curveRadiusMetersCur))
             curveRadiusMetersList.append(curveRadiusMetersCur)
             print(" ")
-        
+
         # AVERAGE LANE LINE RADIUS ANALYSIS
         #curveRadiusMetersRatio = abs(curveRadiusMetersList[0]/curveRadiusMetersList[1])
         curveRadiusMetersRatio = 1
@@ -537,7 +551,33 @@ def P2Main(rawImgSrcIter, dictCameraCalVals):
              radiusSuspicion = ""
                 
         curveRadiusMetersAvg = np.mean(curveRadiusMetersList)
-        print("    P2Main->Radius_{} = {:0.0f}m {}".format("AVG", curveRadiusMetersAvg, radiusSuspicion))
+        print("    P2Main->Radius_{} = {}m {}".format("AVG", curveRadiusMetersAvg, radiusSuspicion))
+        
+        # CREATE COMPOSITE LANE POLYNOMIAL IMAGE   
+        doReverseSegments = False
+
+        polynomialLineSegmentsAccum = []
+        for curImageLine in imageLines:
+            polynomialLineSegmentsCur = EvalPolyToLineSegments(curImageLine.polyCoeff, imageHeight, doReverseSegments)
+            polynomialLineSegmentsAccum.append(polynomialLineSegmentsCur)
+            doReverseSegments = not doReverseSegments # To make the polygon correctly closed, need to reverse order
+            
+        polynomialLineSegmentsCombo = np.concatenate(polynomialLineSegmentsAccum)
+        imgPolyCombo = np.zeros_like(imgRawPOV)
+        isClosed = True
+        OverlayLineSegmentsFill(imgPolyCombo, polynomialLineSegmentsCombo, isClosed)
+        imageRecsCurFrame.append( (imgPolyCombo, "imgPolyCombo"))    
+
+        # OVERLAY LANE POLYNOMIAL ON POV PERSPECTIVE VIEW
+        imgRePerspect = CameraCal_DoPerspectiveTransform(imgPolyCombo, dictCameraCalVals["warpMatrix"], doInverse = True)          
+        imageRecsCurFrame.append( (imgRePerspect, "imgRePerspect"))
+        
+        imgFinal = cv2.addWeighted(imgRePerspect, 1, imgLineUndistort, 0.7, 0)
+        textRadius = "RadiusAvg= {}m {}".format(curveRadiusMetersAvg, radiusSuspicion)
+
+        DrawText(imgFinal, textRadius, posLL = (10,50), colorFont=(255, 255, 255), fontScale = 3)
+        imageRecsCurFrame.append( (imgFinal, "imgFinal"))
+        
         print(" ")
 
         # DEVDEBUG IMAGE DISPLAY
@@ -643,4 +683,60 @@ g_imgPlotOut = PlotSelectedAndPolynomial(g_testpolyCoeff, g_inPixelsX, g_inPixel
 get_ipython().run_line_magic('matplotlib', 'qt4')
 plt.imshow(g_imgPlotOut)
 #plt.imshow(g_testimgPlotIn, cmap="gray")
+
+#    if doReverseSegments:
+#        lineSegmentPoints = lineSegmentPoints[::-1]
+
+#np.set_printoptions(threshold=np.nan)
+#import pprint
+#pp = pprint.PrettyPrinter(indent=4)
+np.set_printoptions(threshold=1000)   
+np.set_printoptions(threshold=np.nan)
+g_testpolyCoeff = None
+g_testimgPlotIn = None
+g_inPixelsX = None
+g_inPixelsY = None
+
+def PlotSelectedAndPolynomial(polyCoeff, inPixelsX, inPixelsY, imgInBW):
+    global g_testpolyCoeff 
+    global g_testimgPlotIn
+    global g_inPixelsX 
+    global g_inPixelsY 
+
+    #g_testpolyCoeff = polyCoeff
+    #g_testimgPlotIn = imgInBW
+    #g_inPixelsX = inPixelsX
+    #g_inPixelsY = inPixelsY
+    
+    imageHeight = imgInBW.shape[0]
+    imageWidth = imgInBW.shape[1]
+
+    # Set unselected pixels to grey
+    imgInGrey = imgInBW * 64
+    imgOut = np.dstack((imgInGrey, imgInGrey, imgInGrey))
+    
+    # Display the selected pixels
+    #imgOut[inPixelsY, inPixelsX] = [0, 255, 0]
+    imgOut[inPixelsY, inPixelsX, 1] = 255 # Set selected pixels to red
+    
+    #coA, coB, coC = polyCoeff[0], polyCoeff[1], polyCoeff[2]
+
+    # Evaluate the polynomial
+    #polyInY = np.array([y for y in range(imageHeight) if y % 8 == 0])
+    #polyOutXf = coA * polyInY**2 + coB * polyInY + coC  
+    #polyOutX = polyOutXf.astype(int)
+
+    #lineSegmentPoints = np.array(list(zip(polyOutX, polyInY)))
+    lineSegmentPoints = EvalPolyToLineSegments(polyCoeff, imageHeight, doReverseSegments=False)
+    #isClosed=False
+    #cv2.polylines(imgOut, [lineSegmentPoints], isClosed, (255, 0, 0), thickness=4)
+    PlotLineSegments(imgOut, lineSegmentPoints, isClosed=False)
+    return imgOut
+
+#g_imgPlotOut = PlotSelectedAndPolynomial(g_testpolyCoeff, g_inPixelsX, g_inPixelsY, g_testimgPlotIn)
+get_ipython().run_line_magic('matplotlib', 'qt4')
+plt.imshow(g_imgPlotOut)
+#plt.imshow(g_testimgPlotIn, cmap="gray")
+        #selectedCoordsY = np.linspace(0, imageHeight-1, num=imageHeight)
+#"RadiusAvg = {:0.0f}m {}".format(curveRadiusMetersAvg, radiusSuspicion)
 

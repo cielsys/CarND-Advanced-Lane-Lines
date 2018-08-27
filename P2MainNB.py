@@ -95,14 +95,6 @@ def PlotSelectedAndPolynomialOld(polyCoeff, inDomainCoords, xRangeCoords, imgPlo
     plt.clf()
     return imgPlotOut
     
-def PlotSelectedAndPolynomial(polyCoeff, inDomainCoords, imgPlotIn):
-    coA, coB, coC = polyCoeff[0], polyCoeff[1], polyCoeff[2]
-
-    polyEvalOutCoords = coA * inDomainCoords**2 + coB * inDomainCoords + coC     
-    imgPlotIn[inDomainCoords, polyEvalOutCoords.astype(int)] = [255, 255, 255]
-
-    return imgPlotIn
-   
 #-------------------------------------------------------------------
 def PlotImageRecords(imgRecords):
     fig = plt.gcf()
@@ -133,9 +125,84 @@ def PlotImageRecords(imgRecords):
     
 
 
+# In[ ]:
+
+
+import pprint
+pp = pprint.PrettyPrinter(indent=4)
+np.set_printoptions(threshold=1000)   
+np.set_printoptions(threshold=np.nan)
+g_testpolyCoeff = None
+g_testimgPlotIn = None
+g_inPixelsX = None
+g_inPixelsY = None
+
+
+# In[53]:
+
+
+#np.set_printoptions(threshold=np.nan)
+
+def PlotSelectedAndPolynomial(polyCoeff, inPixelsX, inPixelsY, imgInBW):
+    global g_testpolyCoeff 
+    global g_testimgPlotIn
+    global g_inPixelsX 
+    global g_inPixelsY 
+
+    #g_testpolyCoeff = polyCoeff
+    #g_testimgPlotIn = imgInBW
+    #g_inPixelsX = inPixelsX
+    #g_inPixelsY = inPixelsY
+    
+    imageHeight = imgInBW.shape[0]
+    imageWidth = imgInBW.shape[1]
+
+    imgInGrey = imgInBW * 64
+    imgOut = np.dstack((imgInGrey, imgInGrey, imgInGrey))
+    
+    imgOut[inPixelsY, inPixelsX] = [0, 255, 0]
+    
+    coA, coB, coC = polyCoeff[0], polyCoeff[1], polyCoeff[2]
+
+    polyInY = np.array([y for y in range(imageHeight) if y % 8 == 0])
+    polyOutXf = coA * polyInY**2 + coB * polyInY + coC  
+    polyOutX = polyOutXf.astype(int)
+
+    points = np.array(list(zip(polyOutX, polyInY)))
+    isClosed=False
+    cv2.polylines(imgOut, [points], isClosed, (255, 0, 0), thickness=4)
+
+    return imgOut
+
+#g_imgPlotOut = PlotSelectedAndPolynomial(g_testpolyCoeff, g_inPixelsX, g_inPixelsY, g_testimgPlotIn)
+#%matplotlib qt4
+#plt.imshow(g_imgPlotOut)
+#plt.imshow(g_testimgPlotIn, cmap="gray")
+
+
+# In[8]:
+
+
+import cv2
+import numpy as np
+
+def testPolyLine():
+    img = np.zeros((768, 1024, 3), dtype='uint8')
+
+    points = np.array([[910, 641], [206, 632], [696, 488], [458, 485]])
+    cv2.polylines(img, [points], 1, (255,255,255),thickness=1)
+
+    winname = 'example'
+    cv2.namedWindow(winname)
+    cv2.imshow(winname, img)
+    cv2.waitKey(3000)
+    cv2.destroyWindow(winname)
+#testPolyLine()
+
+
 # ### Camera Calibration Utilities and Processing
 
-# In[6]:
+# In[9]:
 
 
 def CmaeraCal_GetCalVals(cameraDistortionCalValsFileName, cameraPerspectiveWarpMatrixFileName):
@@ -165,7 +232,7 @@ def CameraCal_DoPerspectiveTransform(imgIn, matTransform):
     return imgOut
 
 
-# In[7]:
+# In[10]:
 
 
 # See http://www.intmath.com/applications-differentiation/8-radius-curvature.php
@@ -183,7 +250,7 @@ def CalcRadiusOfCurvatureParabola(funcCoeffients, evalAtpixY, metersPerPixX=1, m
    return(radius)
 
 
-# In[8]:
+# In[11]:
 
 
 def SelectPixelsUsingSlidingWindow(imgIn, whichLine):    
@@ -293,7 +360,7 @@ g_imgTest = mpimg.imread(g_testImgFileName)
 #Test_SelectPixelsUsingSlidingWindow()
 
 
-# In[9]:
+# In[12]:
 
 
 #g_testPolyCoeffLeft = np.array([ 2.13935315e-04, -3.77507980e-01,  4.76902175e+02])
@@ -334,7 +401,7 @@ class CImageLine(object):
 
     def CalcPolyFit(self, imgIn):
         imageHeight = imgIn.shape[0]
-        selectedCoordsY = np.linspace(0, imageHeight-1, num=imageHeight)
+        #selectedCoordsY = np.linspace(0, imageHeight-1, num=imageHeight)
 
         if (self.HasPolyFit() == True):
             selectedPixelsX, selectedPixelsY, imgSelection = self.SelectPixelsUsingPolynomial(self.polyCoeff, imgIn)
@@ -347,7 +414,7 @@ class CImageLine(object):
         self.polyCoeff = polyCoeffNew
 
         imgPlot = imgIn.copy()
-        imgSelection = PlotSelectedAndPolynomial(polyCoeffNew, selectedPixelsY, imgPlot)
+        imgSelection = PlotSelectedAndPolynomial(polyCoeffNew, selectedPixelsX, selectedPixelsY, imgPlot)
 
         return polyCoeffNew, imgSelection
     
@@ -355,7 +422,7 @@ class CImageLine(object):
 #P2Main(g_imageIter)
 
 
-# In[10]:
+# In[13]:
 
 
 def ImageProc_HSLThreshold(imgHLSIn, channelNum, threshMinMax=(0, 255)):
@@ -367,7 +434,7 @@ def ImageProc_HSLThreshold(imgHLSIn, channelNum, threshMinMax=(0, 255)):
 
 # ### Image Preprocessing Pipeline
 
-# In[11]:
+# In[14]:
 
 
 def ImageProc_PreProcPipeline(imgRaw, dictCameraCalVals):
@@ -396,7 +463,7 @@ def ImageProc_PreProcPipeline(imgRaw, dictCameraCalVals):
     return imageRecsPreProc
 
 
-# In[12]:
+# In[55]:
 
 
 #calFileInNames = glob.glob('camera_cal/cal*.jpg')
@@ -410,12 +477,13 @@ def GetImageIteratorFromDir():
     #imgInFileNames = [dirImagesIn + "straight_lines1.jpg", dirImagesIn + "straight_lines2.jpg"]
     imgInFileNames = [dirImagesIn + "straight_lines1.jpg", dirImagesIn + "straight_lines1.jpg"]
     imgInFileNames = [dirImagesIn + "project_video_f1192.jpg", dirImagesIn + "project_video_f1194.jpg", dirImagesIn + "project_video_f1196.jpg", dirImagesIn + "project_video_f1198.jpg"]
+    #imgInFileNames = [dirImagesIn + "project_video_f1192.jpg"]
     imageIter = ((mpimg.imread(imgInFileName), imgInFileName) for imgInFileName in imgInFileNames)
 
     return(imageIter)
 
 
-# In[13]:
+# In[56]:
 
 
 
@@ -450,7 +518,7 @@ def P2Main(rawImgSrcIter, dictCameraCalVals):
             print("    P2Main->CalcPolyFit({}):".format(curImageLine.name))
             polyCoeffNew, imgLanePixSelection = curImageLine.CalcPolyFit(imgLineFindSrc)
             
-            imageRecsCurFrame.append( (imgLanePixSelection, "imgLanePixSelection" + curImageLine.name ))       
+            imageRecsCurFrame.append( (imgLanePixSelection, "imgLanePixSelection" + curImageLine.name, {"cmap":"gray"} ))       
  
             # LANE LINE RADIUS CALCULATION
             imgHeight = imgRawPOV.shape[0]
@@ -461,7 +529,8 @@ def P2Main(rawImgSrcIter, dictCameraCalVals):
             print(" ")
         
         # AVERAGE LANE LINE RADIUS ANALYSIS
-        curveRadiusMetersRatio = abs(curveRadiusMetersList[0]/curveRadiusMetersList[1])
+        #curveRadiusMetersRatio = abs(curveRadiusMetersList[0]/curveRadiusMetersList[1])
+        curveRadiusMetersRatio = 1
         if (curveRadiusMetersRatio > 1.5 or curveRadiusMetersRatio < 0.66):
             radiusSuspicion = "SUSPICIOUS radius difference!!!"
         else:
@@ -512,4 +581,66 @@ def PlotSelectedAndPolynomialOld(argPolyCoeff, inDomainCoords, xRangeCoords):
         plt.gca().invert_yaxis() # to visualize as we do the images
         plt.show()
         
+
+
+# In[ ]:
+
+
+import pprint
+pp = pprint.PrettyPrinter(indent=4)
+np.set_printoptions(threshold=1000)   
+np.set_printoptions(threshold=np.nan)
+g_testpolyCoeff = None
+g_testimgPlotIn = None
+g_inPixelsX = None
+g_inPixelsY = None
+np.set_printoptions(threshold=np.nan)
+
+def PlotSelectedAndPolynomial(polyCoeff, inPixelsX, inPixelsY, imgInBW):
+    global g_testpolyCoeff 
+    global g_testimgPlotIn
+    global g_inPixelsX 
+    global g_inPixelsY 
+
+    g_testpolyCoeff = polyCoeff
+    g_testimgPlotIn = imgInBW
+    g_inPixelsX = inPixelsX
+    g_inPixelsY = inPixelsY
+    
+    imageHeight = imgInBW.shape[0]
+    imageWidth = imgInBW.shape[1]
+
+    imgInGrey = imgInBW * 64
+    imgOut = np.dstack((imgInGrey, imgInGrey, imgInGrey))
+    
+    imgOut[inPixelsY, inPixelsX] = [0, 255, 0]
+    
+    coA, coB, coC = polyCoeff[0], polyCoeff[1], polyCoeff[2]
+
+    polyInY = np.array([y for y in range(imageHeight) if y % 8 == 0])
+    polyOutXf = coA * polyInY**2 + coB * polyInY + coC  
+    polyOutX = polyOutXf.astype(int)
+    #imgOut[polyInY, polyOutX] = [255]#, 255, 255]
+
+    points = np.array(list(zip(polyOutX, polyInY)))
+    #print("points", points)
+    isClosed=False
+    cv2.polylines(imgOut, [points], isClosed, (255, 0, 0), thickness=4)
+
+    return imgOut
+
+#pp.pprint("coeff",g_testpolyCoeff )
+#print("g_testimgPlotIn",g_testimgPlotIn )
+#pp.pprint("g_testimgPlotIn",g_testimgPlotIn )
+
+#pprint.pprint(g_testpolyCoeff )
+#pprint.pprint(g_testinDomainCoords )
+#pprint.pprint(g_testimgPlotIn )
+
+#print("g_testinDomainCoords",g_testinDomainCoords )
+
+g_imgPlotOut = PlotSelectedAndPolynomial(g_testpolyCoeff, g_inPixelsX, g_inPixelsY, g_testimgPlotIn)
+get_ipython().run_line_magic('matplotlib', 'qt4')
+plt.imshow(g_imgPlotOut)
+#plt.imshow(g_testimgPlotIn, cmap="gray")
 

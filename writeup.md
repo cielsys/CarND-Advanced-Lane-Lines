@@ -84,6 +84,7 @@ integrate into P2Main
 This is where I developed the sliding window lane finding functions.
 
 * **sobel.ipynb** 
+This is where I developed various Sobel egde detection functions
 
 * **SplitVideo.ipynb** 
 This is a utility for converting a video to individual jpegs. 
@@ -218,7 +219,7 @@ Here are the points I selected
     #print("dstRect",destRect)
     return(srcTrap, destRect)
 
-Which finalized to
+Which evaluates to
 
     srcTrap 
     [[  580.   460.] # LT
@@ -240,8 +241,8 @@ to actually perform the transform you must call
 
     imgWarped = cv2.warpPerspective(imgIn, matTransform, img_size, flags=interpolation)
  
-If the points are well chosen the warped output image should be a  map view
-that as no perspective.
+If the points are well chosen the warped output image should be a map view
+that has no perspective.
 
 I suspect that a good perpective warp is essential to a good pipeline.
 The warp process does a lot pixel interpolation that may influence 
@@ -254,7 +255,7 @@ how well lines and edges can be detected.
 ### Image PreProcessing Pipeline
 ProProcessing is orchestrated in the function ```imgSobelMagThr()```
 
-Here is a visual view of my image pipeline, which illustrate the pre-processing
+Here is a visual view of my image pipeline, which illustrates the pre-processing
 imaging steps and the lane finding steps. The image annotations will
 be referred to in the following description of the PreProcess pipeline
 and line finding steps.
@@ -294,7 +295,7 @@ This was the final preprocess step and was the image used in the lane finding
 
 ### Line finding processing
 Infomation for the 2 lines in held in a Class object CImageLine.
-There is one of these objects per Lef and Right Line
+There is one of these objects per Left and Right Line
 The main function for Line finding is handled in a class member function
 ```CImageLine::CalcPolyFit(self, imgIn):```
 This function accepts the preprocessed image and performs the following
@@ -323,17 +324,17 @@ This parabola describes the line (in pixel coordinates)
 If there are not enough pixels for a reliable fit then the old poly is
 reused.
 
-#### 3 Calulate radius of curvature (text on imgFinal)
+#### 3 Calculate radius of curvature (text on imgFinal)
 This is the value that would be used to control steering, presumably.
 Used the formula provided in the tutorials and modified it 
 to manage change of coordinate systems to meters. This is
-run on the polynomial for each laine to calculate the radius of
+run on the polynomial for each lain to calculate the radius of
 curvature for that line. The average is considerd the final
 line curvature.
 
 ### Final Image Processing 
 To generate the final image that will be used as a frame
-in the output video we create on overlay of the found lane as
+in the output video we create an overlay of the found lane as
 follows
 #### 1 Draw a closed polygon using the 2 Line polynomials (imgPolyCombo)
 The fill is green and the red sides are the polynomials. The red
@@ -361,7 +362,7 @@ and saved as an mp4 file
 
     movieClipOut.write_videofile(fileOutName, fps=25, codec='mpeg4')
 
-Here is a link to my final video
+Here is a link to my final video, ./project_video_out.mp4
 
 [project_video_out.mp4](./project_video_final.mp4)
 
@@ -370,13 +371,13 @@ Here is a link to my final video
 Overall I am happy that my code was able to process the basic
 input video as well as it did. It took some fiddling about
 to get it to run acceptablably through the whole video.
-I went completely haywire on the challenge video. I wish there
-were more time to tiddle with it.
+It went completely haywire on the challenge video. I wish there
+were more time to fiddle with it.
 
 #### 1. Problems I encountered
 * Image viewing
 The project involves a lot of images. Permutations of permutations of
-sequences of images. I found that I spend an inordinate amount of
+sequences of images. I found that I spent an inordinate amount of
 time wrestling with matplotlib so that I could view all of the 
 many images to undertand what was going on. I find that matplotlib 
 and jupyter are not quite up to the task of doing that conveniently.
@@ -405,7 +406,7 @@ to meters, but I must have something out of place.
 #### Improvements
 There are a few glitches on the project_video - at the 
 bridge crossings, but I ran out of time for improving the pipeline. 
-Here are a few ideasthat I would implement to solve those glitches
+Here are a few ideas that I would implement to solve those glitches
 and maybe take on the challenge videos.
 
 * Sanity check the polynomials and radii

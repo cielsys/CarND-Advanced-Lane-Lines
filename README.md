@@ -9,7 +9,7 @@
 
 This repo is for personal coursework.<br/>
 It is a clone of [CarND-Advanced-Lane-Lines](https://github.com/udacity/CarND-Advanced-Lane-Lines)
-the first project for [Udacity Self Driving Car](https://www.udacity.com/course/self-driving-car-engineer-nanodegree--nd013)<br/>
+the second project for [Udacity Self Driving Car](https://www.udacity.com/course/self-driving-car-engineer-nanodegree--nd013)<br/>
 +++++++++++++++++++++++
 
 Overview

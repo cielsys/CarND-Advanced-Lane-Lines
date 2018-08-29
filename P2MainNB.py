@@ -1,6 +1,10 @@
 
 # coding: utf-8
 
+# # **Proj2: Advanced Lane Finding** 
+# ### ChrisL
+# 
+
 # In[1]:
 
 
@@ -20,99 +24,53 @@ import datetime
 # In[2]:
 
 
-get_ipython().run_cell_magic('HTML', '', '<style> code {background-color : orange !important;} </style>\nfrom IPython.core.display import display, HTML\ndisplay(HTML("<style>.container { width:100% !important; }</style>"))')
+get_ipython().run_cell_magic('HTML', '', '<style> code {background-color : orange !important;} </style>\nfrom IPython.core.display import display, HTML\njnk = display(HTML("<style>.container { width:100% !important; }</style>"))')
 
 
-# In[4]:
+# ## README
+# #### Check the cell below for global variable switches you may want to manipulate.
+# They are currently set so that if you do run all cells the notebook will 
+# process project_video.mp4 (stored in a subfolder) and create project_video_out in the root.
+# 
+
+# In[3]:
 
 
-def Random_PolyPoints(ploty):
-    '''
-    Generates fake data to use for calculating lane curvature.
-    In your own project, you'll ignore this function and instead
-    feed in the output of your lane detection algorithm to
-    the lane curvature calculation.
-    '''
-    # Set random seed number so results are consistent for grader
-    # Comment this out if you'd like to see results on different random data!
-    np.random.seed(0)
+########################################### Globals #################
 
-    quadratic_coeff = 3e-4 # arbitrary quadratic coefficient
-    offsetX = 200
-    
-    # For each y position generate random x position within +/-50 pix
-    # of the line base position in each case (x=200 for left, and x=900 for right)
-    leftx = np.array([offsetX + (y**2)*quadratic_coeff + np.random.randint(-50, high=51) for y in ploty])
-    leftx = leftx[::-1]  # Reverse to match top-to-bottom in y
-    return ploty, leftx
+# I most often used qt4 backend, but I've selected the safest option for a clean run-all
+#%matplotlib qt4
+#%matplotlib inline
+get_ipython().run_line_magic('matplotlib', 'notebook')
+
+# Determines if run-all-cells should also run the entire movie process
+g_doAutorunMovieProcess = True
+
+# DEVDEBUG IMAGE DISPLAY
+# This slows down the movie process alot, and doesn't work well for multiframe.
+# If you want to see all the pipeline images enable this and run the P2Main cell
+g_doDisplayDebugImages = False
+# If g_doDisplayDebugImages==True and this is true 
+# the pipeline images will also be save to file.
+# This was very useful for dev/debug but not so much for code review.
+g_doSaveDebugImages = False
+
+
+# Specify filenames that contain the camera calibration information
+# These should stay as is
+g_cameraDistortionCalValsFileName = "CameraDistortionCalVals.pypickle"
+g_cameraPerspectiveWarpMatrixFileName = "CameraPerspectiveWarpMatrix.pypickle"
 
 
 # ### Display/Plotting Utilities
 
-# In[263]:
+# In[4]:
 
 
-
-def PlotFigureToRGBArray(fig):
-    fig.canvas.draw()
-    buf = fig.canvas.tostring_rgb()
-    ncols, nrows = fig.canvas.get_width_height()
-    return np.fromstring(buf, dtype=np.uint8).reshape(nrows, ncols, 3)
-
-def PlotSelectedAndPolynomialOld(polyCoeff, inDomainCoords, xRangeCoords, imgPlotIn):
-    imageWidth = imgPlotIn.shape[1]
-    imageHeight = imgPlotIn.shape[0]
-    coA, coB, coC = polyCoeff[0], polyCoeff[1], polyCoeff[2]
-
-    polyEvalOutCoords = coA * inDomainCoords**2 + coB * inDomainCoords + coC
-
-    fig, ax = plt.subplots()
-
-    plt.imshow(imgPlotIn)
-    plt.xlim(0, imageHeight)
-    plt.ylim(0, imageHeight)
-    plt.axis('off')
-    plt.plot(xRangeCoords, inDomainCoords, 'o', color='red', markersize=1)
-    plt.plot(polyEvalOutCoords, inDomainCoords, color='green', linewidth=2)
-    plt.gca().invert_yaxis() # to visualize as we do the images
-    imgPlotOut = PlotFigureToRGBArray(fig)
-    plt.clf()
-    return imgPlotOut
-    
 #-------------------------------------------------------------------
-def PlotImageRecordsOld(imgRecords):
-    #fig = plt.gcf()
-    fig = plt.figure()
-    fig.set_size_inches(18,12)
-    #fig.set_dpi(180)
-
-    numImages = len(imgRecords)
-    numCols = 3
-    numRows = math.ceil(numImages/numCols)
-    for recIndex, imgRecord in enumerate(imgRecords):
-        numFields = len(imgRecord)
-        img = imgRecord[0]
-        if (numFields >= 2):
-            imgName =  imgRecord[1]
-        else:
-            imgName =  "img_" + str(recIndex)
-            
-        if (numFields >= 3):
-            kwArgs =  imgRecord[2]
-        else:
-            kwArgs =  {}
-                
-        plt.subplot(numRows, numCols, recIndex+1)
-        plt.title(imgName)
-        plt.imshow(img, **kwArgs)
-       
-    plt.show()
-    fig.tight_layout()
-    
- #-------------------------------------------------------------------
-g_plotFigIndex = 0
+#g_plotFigIndex = 0
 def PlotImageRecords(imgRecords, doSaveDebugImages):
-    global g_plotFigIndex
+    #global g_plotFigIndex
     fig = plt.figure(0)#g_plotFigIndex)
     g_plotFigIndex+=1
     fig.set_size_inches(18,12)
@@ -159,27 +117,7 @@ def PlotSaveFigure(fig, plotName):
     fig.savefig(fileNameOut, bbox_inches='tight')    
 
 
-# In[8]:
-
-
-import cv2
-import numpy as np
-
-def testPolyLine():
-    img = np.zeros((768, 1024, 3), dtype='uint8')
-
-    points = np.array([[910, 641], [206, 632], [696, 488], [458, 485]])
-    cv2.polylines(img, [points], 1, (255,255,255),thickness=1)
-
-    winname = 'example'
-    cv2.namedWindow(winname)
-    cv2.imshow(winname, img)
-    cv2.waitKey(3000)
-    cv2.destroyWindow(winname)
-#testPolyLine()
-
-
-# In[127]:
+# In[5]:
 
 
 def DrawText(img, text, posLL = (10,40), colorFont=(255, 255, 255), fontScale = 2):
@@ -188,9 +126,33 @@ def DrawText(img, text, posLL = (10,40), colorFont=(255, 255, 255), fontScale = 
     cv2.putText(img, text, posLL, font, fontScale, colorFont, lineType)
 
 
+# In[6]:
+
+
+def PlotSelectedAndPolynomial(polyCoeff, inPixelsX, inPixelsY, imgInBW):    
+    imageHeight = imgInBW.shape[0]
+    imageWidth = imgInBW.shape[1]
+
+    # Set unselected pixels to grey
+    imgInGrey = imgInBW * 64
+    imgOut = np.dstack((imgInGrey, imgInGrey, imgInGrey))
+    
+    # Display the selected pixels
+    imgOut[inPixelsY, inPixelsX, 1] = 255 # Set selected pixels to red
+    
+    lineSegmentPoints = EvalPolyToLineSegments(polyCoeff, imageHeight, doReverseSegments=False)
+    OverlayLineSegments(imgOut, lineSegmentPoints, isClosed=False)
+    return imgOut
+
+#g_imgPlotOut = PlotSelectedAndPolynomial(g_testpolyCoeff, g_inPixelsX, g_inPixelsY, g_testimgPlotIn)
+#%matplotlib qt4
+#plt.imshow(g_imgPlotOut)
+#plt.imshow(g_testimgPlotIn, cmap="gray")
+
+
 # ### Camera Calibration Utilities and Processing
 
-# In[152]:
+# In[7]:
 
 
 def CameraCal_GetCalVals(cameraDistortionCalValsFileName, cameraPerspectiveWarpMatrixFileName):
@@ -232,15 +194,15 @@ def CameraCal_DoPerspectiveTransform(imgIn, matTransform, doInverse = False):
 # \end{align}
 # $$
 
-# In[246]:
+# In[8]:
 
 
 # See http://www.intmath.com/applications-differentiation/8-radius-curvature.php
 def CalcRadiusOfCurvatureParabola(funcCoeffients, evalAtpixY, metersPerPixX=1, metersPerPixY=1):
    # Convert parabola from pixels to meters
    coA = funcCoeffients[0] *  metersPerPixX/(metersPerPixY**2)
-   coB = funcCoeffients[1] * metersPerPixY
-   #coC = funcCoeffients[2] * mPerPixY # Not used
+   coB = funcCoeffients[1] * metersPerPixX/metersPerPixY
+   #coC = funcCoeffients[2] * metersPerPixX # Not used
 
    mY = evalAtpixY * metersPerPixY
 
@@ -264,10 +226,13 @@ def TestCalcRadiusOfCurvatureParabola():
    print("curveX m", curveX) # expect 533.8m 1625.1pix
    print("curveY m", curveY) # expect 648.2m 1976.3pix
    
-#TestCalcRadiusOfCurvatureParabola ()                               
+TestCalcRadiusOfCurvatureParabola ()                               
 
 
-# In[181]:
+# ### Image Preprocessing Pipeline Functions 
+# 
+
+# In[9]:
 
 
 def SelectPixelsUsingSlidingWindow(imgIn, whichLine):    
@@ -362,9 +327,6 @@ def SelectPixelsUsingSlidingWindow(imgIn, whichLine):
     return selectedPixelsX, selectedPixelsY, imgSelectionOut
 
 def Test_SelectPixelsUsingSlidingWindow():
-    #%matplotlib qt4
-    #%matplotlib inline
-    #%matplotlib notebook
     selectedPixelsX, selectedPixelsY, imgSelectionOut = SelectPixelsUsingSlidingWindow(g_imgTest, "RIGHT")
     plt.figure(figsize=(12,8))
     imgSelectionOut[selectedPixelsY, selectedPixelsX] = [255, 0, 0]
@@ -372,12 +334,12 @@ def Test_SelectPixelsUsingSlidingWindow():
     plt.tight_layout()
 
 #=========== Test invocation
-g_testImgFileName = "ImagesIn/TestImagesIn/PipelineStages/warped_example.jpg"
-g_imgTest = mpimg.imread(g_testImgFileName)
+#g_testImgFileName = "ImagesIn/TestImagesIn/PipelineStages/warped_example.jpg"
+#g_imgTest = mpimg.imread(g_testImgFileName)
 #Test_SelectPixelsUsingSlidingWindow()
 
 
-# In[13]:
+# In[10]:
 
 
 def ImageProc_HSLThreshold(imgHLSIn, channelNum, threshMinMax=(0, 255)):
@@ -387,7 +349,7 @@ def ImageProc_HSLThreshold(imgHLSIn, channelNum, threshMinMax=(0, 255)):
     return imgOneCh, imgBWMask
 
 
-# In[204]:
+# In[11]:
 
 
 #-------------------------------------------------------------------
@@ -414,34 +376,7 @@ def SobelThesholdMag(imgIn, sobel_kernel=3, threshMinMax=(0, 255)):
     return imgBWMask
 
 
-# ### Image Preprocessing Pipeline
-
-# In[99]:
-
-
-
-def PlotSelectedAndPolynomial(polyCoeff, inPixelsX, inPixelsY, imgInBW):    
-    imageHeight = imgInBW.shape[0]
-    imageWidth = imgInBW.shape[1]
-
-    # Set unselected pixels to grey
-    imgInGrey = imgInBW * 64
-    imgOut = np.dstack((imgInGrey, imgInGrey, imgInGrey))
-    
-    # Display the selected pixels
-    imgOut[inPixelsY, inPixelsX, 1] = 255 # Set selected pixels to red
-    
-    lineSegmentPoints = EvalPolyToLineSegments(polyCoeff, imageHeight, doReverseSegments=False)
-    OverlayLineSegments(imgOut, lineSegmentPoints, isClosed=False)
-    return imgOut
-
-#g_imgPlotOut = PlotSelectedAndPolynomial(g_testpolyCoeff, g_inPixelsX, g_inPixelsY, g_testimgPlotIn)
-get_ipython().run_line_magic('matplotlib', 'qt4')
-plt.imshow(g_imgPlotOut)
-#plt.imshow(g_testimgPlotIn, cmap="gray")
-
-
-# In[215]:
+# In[12]:
 
 
 def EvalPolyToLineSegments(polyCoeff, imageHeight, doReverseSegments=False):
@@ -470,7 +405,7 @@ def OverlayLineSegmentsFill(imgIn, lineSegmentPoints, isClosed=False, colorLine=
     cv2.polylines(imgIn, [lineSegmentPoints], isClosed, colorLine, thickness=5)
 
 
-# In[272]:
+# In[13]:
 
 
 def ImageProc_PreProcPipeline(imgRaw, dictCameraCalVals):
@@ -500,11 +435,15 @@ def ImageProc_PreProcPipeline(imgRaw, dictCameraCalVals):
     return imageRecsPreProc
 
 
-# In[268]:
+# In[14]:
 
 
 
 class CImageLine(object):
+    """
+    This class holds state information of each line (LEFT, RIGHT) 
+    because prior state is a factor in future line determinations.
+    """
 
     def __init__(self, name, dictCameraCalVals):
         self.name = name
@@ -519,6 +458,10 @@ class CImageLine(object):
         return(hasPolyFit)
     
     def SelectPixelsUsingPolynomial(self, argPolyCoeff, imgIn, selectionWidth = 100):
+        """
+        Use the supplied parabola coeffients (from the previous frame) to create a curved mask
+        for selecting pixels to use in the next poly fit
+        """
         # Coeffient vars. For readability
         coA, coB, coC = argPolyCoeff[0],argPolyCoeff[1],argPolyCoeff[2],
 
@@ -544,6 +487,7 @@ class CImageLine(object):
         imageHeight = imgIn.shape[0]
         minpix = 100
 
+        # Select pixels for next poly fit
         if (self.HasPolyFit() == True):
             selectedPixelsX, selectedPixelsY, imgSelectedPixels = self.SelectPixelsUsingPolynomial(self.polyCoeff, imgIn)
         else:
@@ -552,8 +496,10 @@ class CImageLine(object):
             selectedPixelsX, selectedPixelsY, imgSelectedPixels = SelectPixelsUsingSlidingWindow(imgIn, self.name)
 
         if (len(selectedPixelsY) > minpix):
+            # Do the poly fit on the selected pixels
             polyCoeffNew = np.polyfit(selectedPixelsY, selectedPixelsX, 2)
         else:
+            # Just reuse the old poly
             polyCoeffNew = self.polyCoeff
             
         self.polyCoeff = polyCoeffNew
@@ -563,24 +509,49 @@ class CImageLine(object):
         curveRadiusMetersNew = CalcRadiusOfCurvatureParabola(polyCoeffNew, evalRadiusAtpixY, self.dictCameraCalVals["metersPerPixX"], self.dictCameraCalVals["metersPerPixY"])
         self.curveRadiusMeters = curveRadiusMetersNew
  
-
         imgSelection = PlotSelectedAndPolynomial(polyCoeffNew, selectedPixelsX, selectedPixelsY, imgIn)
-        #imgSelection = PlotSelectedAndPolynomial(polyCoeffNew, selectedPixelsX, selectedPixelsY, imgSelectedPixels)
 
         return polyCoeffNew, imgSelection
     
-#%matplotlib notebook
-#P2Main(g_imageIter)
+
+
+# In[15]:
+
+
+def GetImageIteratorFromDir():
+    """ 
+    Creates and returns an iterator that supplies 'imageRecord' tuples (image, imageName)
+    """
+    dirImagesIn = "ImagesIn/TestImagesIn/POVRaw/"
+    #dirImagesIn = "ImagesIn/VideosIn/project_video_frames/"
+
+    #imgInFileNames = [dirImagesIn + "straight_lines1.jpg", dirImagesIn + "straight_lines2.jpg"]
+    #imgInFileNames = [dirImagesIn + "project_video_f1192.jpg"]
+    imgInFileNames = [dirImagesIn + "straight_lines1.jpg", dirImagesIn + "straight_lines1.jpg"]
+    #imgInFileNames = [dirImagesIn + "project_video_f1192.jpg", dirImagesIn + "project_video_f1194.jpg", dirImagesIn + "project_video_f1196.jpg", dirImagesIn + "project_video_f1198.jpg"]
+    #imgInFileNames = [dirImagesIn + "project_video_f0611.jpg", dirImagesIn + "project_video_f0612.jpg"]
+    #imgInFileNames = [dirImagesIn + "project_video_f0609.jpg", dirImagesIn + "project_video_f0610.jpg", dirImagesIn + "project_video_f0611.jpg", dirImagesIn + "project_video_f0612.jpg", dirImagesIn + "project_video_f0613.jpg", dirImagesIn + "project_video_f0614.jpg"]
+    #imgInFileNames = [dirImagesIn + "project_video_f1026.jpg", dirImagesIn + "project_video_f1027.jpg", dirImagesIn + "project_video_f1028.jpg", dirImagesIn + "project_video_f1029.jpg", dirImagesIn + "project_video_f1030.jpg", dirImagesIn + "project_video_f1031.jpg"]
+    #imgInFileNames = [dirImagesIn + "project_video_f1030.jpg", dirImagesIn + "project_video_f1031.jpg"]
+    #imgInFileNames = [dirImagesIn + "project_video_f0800.jpg", dirImagesIn + "project_video_f0801.jpg"]
+    imageIter = ((mpimg.imread(imgInFileName), imgInFileName) for imgInFileName in imgInFileNames)
+
+    return(imageIter)
 
 
 # # ==================== P2Main() ===================
-# ### This is the main cell/entry point for this notebook
+# ### This is the main cell/entry point for this notebook. 
+# ## This cell autoruns!
 
-# In[277]:
+# In[16]:
 
 
 
 def P2Main(rawImgSrcIter, dictCameraCalVals):
+    """
+    Run the full lane finding process on each image provided by
+    rawImgSrcIter iterator
+    """
     frameIndex = 0  
     imageFrames = []   
     
@@ -589,6 +560,9 @@ def P2Main(rawImgSrcIter, dictCameraCalVals):
   
     # For every raw POV image coming from the camera
     for inputImageObj in rawImgSrcIter:
+        # My file iterator supply an 'imageRecord' tuple (image, imgNameString)
+        # The moviePy iterator only supplies an image. 
+        # This if-else handles the two cases 
         if type(inputImageObj) is tuple:
             (imgRawPOV, imgRawPOVName) = inputImageObj
         else:
@@ -668,15 +642,9 @@ def P2Main(rawImgSrcIter, dictCameraCalVals):
         imageRecsCurFrame.append( (imgFinal, "imgFinal"))
         
         imageFrames.append(imgFinal)
-
-        # DEVDEBUG IMAGE DISPLAY
-        doDisplayDebugImages = False
-        doSaveDebugImages = True
  
-        if doDisplayDebugImages:
-            get_ipython().run_line_magic('matplotlib', 'qt4')
+        if g_doDisplayDebugImages:
             PlotImageRecords(imageRecsCurFrame, doSaveDebugImages)
-            #key = input("PRESS Enter")
             #key = cv2.waitKey(5000)
             
         frameIndex+=1
@@ -684,86 +652,84 @@ def P2Main(rawImgSrcIter, dictCameraCalVals):
             
     return imageFrames
 #============================= Main Invocation Prep =================
-# Specify filenames that contain the camera calibration information
-g_cameraDistortionCalValsFileName = "CameraDistortionCalVals.pypickle"
-g_cameraPerspectiveWarpMatrixFileName = "CameraPerspectiveWarpMatrix.pypickle"
-
 g_dictCameraCalVals = CameraCal_GetCalVals(g_cameraDistortionCalValsFileName, g_cameraPerspectiveWarpMatrixFileName)
 g_imageIter = GetImageIteratorFromDir() # Provide a source of raw camera POV images for processing
 
 #================= P2Main() invocation
-#g_imageFrames = P2Main(g_imageIter, g_dictCameraCalVals)
+g_imageFrames = P2Main(g_imageIter, g_dictCameraCalVals)  
 
 
-# In[249]:
+# In[17]:
 
 
-#calFileInNames = glob.glob('camera_cal/cal*.jpg')
-#calFileInNames = ['camera_cal/calibration2.jpg']
-
-def GetImageIteratorFromDir():
-    dirImagesIn = "ImagesIn/TestImagesIn/POVRaw/"
-    dirImagesIn = "ImagesIn/VideosIn/project_video_frames/"
-    fileNameBase = "straight_lines1.jpg"
-
-    #imgInFileNames = [dirImagesIn + "straight_lines1.jpg", dirImagesIn + "straight_lines2.jpg"]
-    #imgInFileNames = [dirImagesIn + "project_video_f1192.jpg"]
-    imgInFileNames = [dirImagesIn + "straight_lines1.jpg", dirImagesIn + "straight_lines1.jpg"]
-    imgInFileNames = [dirImagesIn + "project_video_f1192.jpg", dirImagesIn + "project_video_f1194.jpg", dirImagesIn + "project_video_f1196.jpg", dirImagesIn + "project_video_f1198.jpg"]
-    imgInFileNames = [dirImagesIn + "project_video_f0611.jpg", dirImagesIn + "project_video_f0612.jpg"]
-    imgInFileNames = [dirImagesIn + "project_video_f0609.jpg", dirImagesIn + "project_video_f0610.jpg", dirImagesIn + "project_video_f0611.jpg", dirImagesIn + "project_video_f0612.jpg", dirImagesIn + "project_video_f0613.jpg", dirImagesIn + "project_video_f0614.jpg"]
-    imgInFileNames = [dirImagesIn + "project_video_f1026.jpg", dirImagesIn + "project_video_f1027.jpg", dirImagesIn + "project_video_f1028.jpg", dirImagesIn + "project_video_f1029.jpg", dirImagesIn + "project_video_f1030.jpg", dirImagesIn + "project_video_f1031.jpg"]
-    imgInFileNames = [dirImagesIn + "project_video_f1030.jpg", dirImagesIn + "project_video_f1031.jpg"]
-    imageIter = ((mpimg.imread(imgInFileName), imgInFileName) for imgInFileName in imgInFileNames)
-
-    return(imageIter)
-
-
-# In[278]:
-
-
-def GetMovieIterator():
-    fileNameBase = "project_video"
+def GetMovieIterator(fileNameBase):
     fileExtIn = ".mp4"
-    fileExtOut = "jpg"
     dirIn = "ImagesIn/VideosIn/"
-    dirOut = "ImagesIn/VideosIn/" + fileNameBase + "_frames/"
     fileNameIn  = dirIn + fileNameBase + fileExtIn
-    fileNameOutFmt = dirOut + fileNameBase + "_f{:04}." + fileExtOut
     
-    #if (not os.path.exists(dirOut)):
-    #    os.makedirs(dirOut)
-
-    #movieClipIn = VideoFileClip(fileNameIn).subclip(39, 43) difficult bridge
+    #movieClipIn = VideoFileClip(fileNameIn).subclip(39, 43) difficult bridge for project_video
     movieClipIn = VideoFileClip(fileNameIn)
     imageIter = movieClipIn.iter_frames()
     return imageIter
     
 
 
-# In[279]:
+# In[18]:
 
 
 import moviepy.editor as mp
 from moviepy.editor import VideoFileClip
 
-def MakeMovie(rawImgSrcIter):
-    imageFrames =  P2Main(g_imageIter, g_dictCameraCalVals)
-
+def MakeMovie():
+    #fileNameBase = "challenge_video"
+    fileNameBase = "project_video"
+    
+    imageIter = GetMovieIterator(fileNameBase) # Provide a source of raw camera POV images for processing
+    imageFrames =  P2Main(imageIter, g_dictCameraCalVals)
     movieClipOut = mp.ImageSequenceClip(imageFrames, fps=25)
-    dirOut = "ImagesOut/VideosOut/"
+    
+    #dirOut = "ImagesOut/VideosOut/"
+    dirOut = "./" # For the submission output to root
+    if (not os.path.exists(dirOut)):
+        os.makedirs(dirOut)
+
     strDT = "{:%Y-%m-%dT%H:%M:%S}".format(datetime.datetime.now())
-    fileOutName = dirOut + "project_video_" + strDT + ".mp4"
+    #fileOutName = dirOut + fileNameBase + strDT + ".mp4"
+    fileOutName = "project_video_out.mp4"
     movieClipOut.write_videofile(fileOutName, fps=25, codec='mpeg4')
 
 #g_imageIter = GetImageIteratorFromDir() # Provide a source of raw camera POV images for processing
-g_imageIter = GetMovieIterator() # Provide a source of raw camera POV images for processing
-MakeMovie(g_imageIter)
+if g_doAutorunMovieProcess:
+    MakeMovie()
+
+
+# In[19]:
+
+
+def Random_PolyPoints(ploty):
+    '''
+    Generates fake data to use for calculating lane curvature.
+    In your own project, you'll ignore this function and instead
+    feed in the output of your lane detection algorithm to
+    the lane curvature calculation.
+    '''
+    # Set random seed number so results are consistent for grader
+    # Comment this out if you'd like to see results on different random data!
+    np.random.seed(0)
+
+    quadratic_coeff = 3e-4 # arbitrary quadratic coefficient
+    offsetX = 200
+    
+    # For each y position generate random x position within +/-50 pix
+    # of the line base position in each case (x=200 for left, and x=900 for right)
+    leftx = np.array([offsetX + (y**2)*quadratic_coeff + np.random.randint(-50, high=51) for y in ploty])
+    leftx = leftx[::-1]  # Reverse to match top-to-bottom in y
+    return ploty, leftx
 
 
 # ## Snippets & Junk Code
 
-# In[ ]:
+# In[20]:
 
 
 def Polynomial_Eval(polyCoeff, inVals):
@@ -784,7 +750,7 @@ def PlotSelectedAndPolynomialOld(argPolyCoeff, inDomainCoords, xRangeCoords):
         
 
 
-# In[ ]:
+# In[21]:
 
 
 def MakeMovieTest(rawImgSrcIter):
@@ -925,7 +891,7 @@ def PlotSelectedAndPolynomial(polyCoeff, inPixelsX, inPixelsY, imgInBW):
     #mageRecsPreProc.append( (imgLineFindSrcDebug, "imgLineFindSrcDebug", {"cmap":"gray"}) )       
 
 
-# In[3]:
+# In[ ]:
 
 
 def GlobalCandidates():
@@ -939,4 +905,66 @@ def GlobalCandidates():
     
     #if (not os.path.exists(dirOut)):
     #    os.makedirs(dirOut)
+
+
+# In[ ]:
+
+
+
+def PlotFigureToRGBArray(fig):
+    fig.canvas.draw()
+    buf = fig.canvas.tostring_rgb()
+    ncols, nrows = fig.canvas.get_width_height()
+    return np.fromstring(buf, dtype=np.uint8).reshape(nrows, ncols, 3)
+
+def PlotSelectedAndPolynomialOld(polyCoeff, inDomainCoords, xRangeCoords, imgPlotIn):
+    imageWidth = imgPlotIn.shape[1]
+    imageHeight = imgPlotIn.shape[0]
+    coA, coB, coC = polyCoeff[0], polyCoeff[1], polyCoeff[2]
+
+    polyEvalOutCoords = coA * inDomainCoords**2 + coB * inDomainCoords + coC
+
+    fig, ax = plt.subplots()
+
+    plt.imshow(imgPlotIn)
+    plt.xlim(0, imageHeight)
+    plt.ylim(0, imageHeight)
+    plt.axis('off')
+    plt.plot(xRangeCoords, inDomainCoords, 'o', color='red', markersize=1)
+    plt.plot(polyEvalOutCoords, inDomainCoords, color='green', linewidth=2)
+    plt.gca().invert_yaxis() # to visualize as we do the images
+    imgPlotOut = PlotFigureToRGBArray(fig)
+    plt.clf()
+    return imgPlotOut
+    
+#-------------------------------------------------------------------
+def PlotImageRecordsOld(imgRecords):
+    #fig = plt.gcf()
+    fig = plt.figure()
+    fig.set_size_inches(18,12)
+    #fig.set_dpi(180)
+
+    numImages = len(imgRecords)
+    numCols = 3
+    numRows = math.ceil(numImages/numCols)
+    for recIndex, imgRecord in enumerate(imgRecords):
+        numFields = len(imgRecord)
+        img = imgRecord[0]
+        if (numFields >= 2):
+            imgName =  imgRecord[1]
+        else:
+            imgName =  "img_" + str(recIndex)
+            
+        if (numFields >= 3):
+            kwArgs =  imgRecord[2]
+        else:
+            kwArgs =  {}
+                
+        plt.subplot(numRows, numCols, recIndex+1)
+        plt.title(imgName)
+        plt.imshow(img, **kwArgs)
+       
+    plt.show()
+    fig.tight_layout()
+    
 

@@ -27,14 +27,6 @@ The goals / steps of this project are the following:
 <br/>
 
 ## **Reviewer Usage Notes**
-###     Use Shallow git Clone Depth
-My repo is bloated with image and video files. But more recent commits have been 
-pared down to only the files essential for your review, so I'd advise
-that you do a shallow clone to review this project.
-
-I suppose you already do this... but it would look like this:
-
-    git clone --depth 1	https://github.com/cielsys/CarND-Advanced-Lane-Lines.git
 
 ###     Use **carnd-term1 python3** conda environment
 I am using the pyhon3 conda environment provided in the starter kit.
@@ -49,6 +41,10 @@ observe.
 P2Main depends on cal files present in repo. Other notebooks write
 those files... and could potentially 'damage' them which
 would in turn cause P2Main to malfunction.
+
+Also I apoligize that the repo is so big - I accidentally
+pushed a bunch of image files and I didn't have time 
+to cleanup so that a shallow clone would work.
 
 <br/>
 
@@ -177,7 +173,7 @@ not neccesarily to each other)
  
 What I did was use a camera POV image with straight lines and selected
 4 points on those lines that describe a trapezoid (because of perspective). Then
-chose correponing 4 points of a rectangle to which I wanted those points to 
+chose corresponding 4 points of a rectangle to which I wanted those points to 
 map to. I used sample images to choose points similar to those used
 in the instruction tutorials. This is because, 1) the tutorials work.
 2) The metersPerPixelX and  metersPerPixelY provided in the tutorials
@@ -222,6 +218,18 @@ Here are the points I selected
     #print("dstRect",destRect)
     return(srcTrap, destRect)
 
+Which finalized to
+
+    srcTrap 
+    [[  580.   460.] # LT
+    [  213.   718.]  # LB
+    [ 1103.   718.]  # RB
+    [  705.   460.]] # RT
+    dstRect 
+    [[  296.5     0. ]
+    [  296.5   715. ]
+    [ 1004.    715. ]
+    [ 1004.      0. ]]
 
 These points are then fed to on OpenCV function that calculates a 
 matrix that defines a transform that performs this mapping of points.
@@ -312,6 +320,9 @@ If there are enough selected pixels from the previous step they are passed to
 This fits a polynomial (parabola) and returns the coeficients.
 This parabola describes the line (in pixel coordinates)
 
+If there are not enough pixels for a reliable fit then the old poly is
+reused.
+
 #### 3 Calulate radius of curvature (text on imgFinal)
 This is the value that would be used to control steering, presumably.
 Used the formula provided in the tutorials and modified it 
@@ -352,39 +363,74 @@ and saved as an mp4 file
 
 Here is a link to my final video
 
-[project_video_out](./project_video_out.mp4)
+[project_video_out.mp4](./project_video_final.mp4)
 
-
-###
-![alt text][image5]
-
-#### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
-
-I did this in lines # through # in my code in `my_other_file.py`
-
-#### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
-
-I implemented this step in lines # through # in my code in `yet_another_file.py` in the function `map_lane()`.  Here is an example of my result on a test image:
-
-![alt text][image6]
-
----
-
-### Pipeline (video)
-
-#### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
-
----
 
 ### Discussion
+Overall I am happy that my code was able to process the basic
+input video as well as it did. It took some fiddling about
+to get it to run acceptablably through the whole video.
+I went completely haywire on the challenge video. I wish there
+were more time to tiddle with it.
 
-#### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
+#### 1. Problems I encountered
+* Image viewing
+The project involves a lot of images. Permutations of permutations of
+sequences of images. I found that I spend an inordinate amount of
+time wrestling with matplotlib so that I could view all of the 
+many images to undertand what was going on. I find that matplotlib 
+and jupyter are not quite up to the task of doing that conveniently.
+At least now I have some workable utility functions that mostly do what I
+need. 
 
-Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.  
+* Primitive dev debug process
+Jupyter is a fun development environment but it is primitive
+for debugging complicated code. After this project I will try PyCharm
+to see if it is a real source code debugger with break on error, step
+through code (especially go backwards), variable inspection and manipulation (especially up the call stack), 
+edit in place debugging, conditional breakpoints, refactoring support, at least
+rename identifier. 
 
+I find that I am
+practicing the crash-and-burn printf debugging of 30 years ago!
+It is exceptionally slow going. I wil try pdb in jupyter, it should help,
+but it still seem like gdb of 30 years ago.
+
+* Radius Calculation
+My radius calculation is way out of whack. It works on the sample
+polynomial fine but it jumps all over the place frame to frame.
+I attempted to use a change of variable substituion to convert from pixels 
+to meters, but I must have something out of place.
+
+#### Improvements
+There are a few glitches on the project_video - at the 
+bridge crossings, but I ran out of time for improving the pipeline. 
+Here are a few ideasthat I would implement to solve those glitches
+and maybe take on the challenge videos.
+
+* Sanity check the polynomials and radii
+Do the lines intersect in near field? Are the curved in different directions?
+Are the radii radically different? Any of these conditions could be an indicator 
+that a recalc is needed.
+
+* Check the 'spread' or deviation of selected points from the
+predicted poly path (or rectangles) Well processed lane lines a
+going to have a small deviation. A big deviation could be an indicator 
+that a recalc is needed.
+
+* Precalculate several preprocess pipeline permutations. When using
+one preprocess image yields indicators such as above, go back and try again.
+
+* I am pretty sure that I have my perspective warp to early in the
+pipeline. If I had more time I would go back and try it after the
+edge detections.
+
+* Try other preprocessing steps.
+There are a variety of things illustrated in the tutorials that I did
+not use at all. Some of the basic image transforms, canny and hough.
+And logical combinations of all the steps. The permutations
+are endless, but alas so little time...
 
 ### Links
 
 [Rubric](https://review.udacity.com/#!/rubrics/571/view) 
-
-![Found Corners](camera_caloutput/calibration2.out.jpg)

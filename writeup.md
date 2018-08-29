@@ -2,7 +2,7 @@
 ### Submission writeup: ChrisL
 
 
-![frame 0800final](ImagesOut/ImagesOut/f0800.png)
+![frame 0800final](./ImagesOut/ImagesOut/f0800.png)
 
 <br/>
 
